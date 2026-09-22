@@ -1,0 +1,10 @@
+aiogram==3.31.0
+
+SQLAlchemy[asyncio]==2.0.54
+aiosqlite>=0.20,<1.0
+
+python-dotenv>=1.0,<2.0
+
+httpx>=0.28,<1.0
+
+PyMuPDF>=1.28,<2.0
