@@ -1,9 +1,9 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from aiogram import Router
 from aiogram.filters import Command
-from aiogram.fsm.context import FSMContext
 from aiogram.filters.command import CommandObject
+from aiogram.fsm.context import FSMContext
 from aiogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
@@ -17,16 +17,22 @@ from database.events import (
     delete_event,
     get_event_by_id,
     update_event_title,
-    get_events,
 )
 
 
 router = Router()
 
 
-def format_event(event) -> str:
-    start = event.start_at.strftime("%d.%m.%Y %H:%M")
-    end = event.end_at.strftime("%H:%M")
+def format_event(
+    event,
+) -> str:
+    start = event.start_at.strftime(
+        "%d.%m.%Y %H:%M"
+    )
+
+    end = event.end_at.strftime(
+        "%H:%M"
+    )
 
     text = (
         f"📅 {start}–{end}\n"
@@ -34,25 +40,23 @@ def format_event(event) -> str:
     )
 
     if event.student:
-        text += f"\n👤 Ученик: {event.student}"
+        text += (
+            f"\n👤 Ученик: "
+            f"{event.student}"
+        )
 
     if event.topic:
-        text += f"\n📚 Тема: {event.topic}"
+        text += (
+            f"\n📚 Тема: "
+            f"{event.topic}"
+        )
 
     if event.location:
-        text += f"\n📍 {event.location}"
+        text += (
+            f"\n📍 {event.location}"
+        )
 
     return text
-
-
-def format_week_event(event) -> str:
-    start = event.start_at.strftime("%H:%M")
-    end = event.end_at.strftime("%H:%M")
-
-    return (
-        f"  {start}–{end}\n"
-        f"  {event.title}"
-    )
 
 
 @router.message(Command("add"))
@@ -70,7 +74,10 @@ async def add_event(
         )
         return
 
-    parts = [part.strip() for part in command.args.split("|")]
+    parts = [
+        part.strip()
+        for part in command.args.split("|")
+    ]
 
     if len(parts) != 4:
         await message.answer(
@@ -82,7 +89,12 @@ async def add_event(
         )
         return
 
-    title, event_type, start_text, end_text = parts
+    (
+        title,
+        event_type,
+        start_text,
+        end_text,
+    ) = parts
 
     try:
         start_at = datetime.strptime(
@@ -106,8 +118,8 @@ async def add_event(
 
     if end_at <= start_at:
         await message.answer(
-            "Ошибка: время окончания должно быть позже "
-            "времени начала."
+            "Ошибка: время окончания "
+            "должно быть позже времени начала."
         )
         return
 
@@ -126,13 +138,16 @@ async def add_event(
         f"ID: {event.id}\n"
         f"Название: {event.title}\n"
         f"Тип: {event.event_type}\n"
-        f"Начало: {event.start_at:%Y-%m-%d %H:%M}\n"
-        f"Конец: {event.end_at:%Y-%m-%d %H:%M}"
+        f"Начало: "
+        f"{event.start_at:%Y-%m-%d %H:%M}\n"
+        f"Конец: "
+        f"{event.end_at:%Y-%m-%d %H:%M}"
     )
 
 
-
-########## DELETE ###########
+# ==========================================================
+# DELETE
+# ==========================================================
 
 
 @router.message(Command("delete"))
@@ -149,7 +164,10 @@ async def delete_event_command(
         return
 
     try:
-        event_id = int(command.args.strip())
+        event_id = int(
+            command.args.strip()
+        )
+
     except ValueError:
         await message.answer(
             "ID события должен быть числом.\n\n"
@@ -166,7 +184,8 @@ async def delete_event_command(
 
         if event is None:
             await message.answer(
-                f"Событие с ID {event_id} не найдено."
+                f"Событие с ID {event_id} "
+                f"не найдено."
             )
             return
 
@@ -175,30 +194,44 @@ async def delete_event_command(
                 [
                     InlineKeyboardButton(
                         text="✅ Да, удалить",
-                        callback_data=f"delete_confirm:{event.id}",
+                        callback_data=(
+                            f"delete_confirm:"
+                            f"{event.id}"
+                        ),
                     ),
                     InlineKeyboardButton(
                         text="❌ Отмена",
-                        callback_data=f"delete_cancel:{event.id}",
+                        callback_data=(
+                            f"delete_cancel:"
+                            f"{event.id}"
+                        ),
                     ),
                 ]
             ]
         )
 
         await message.answer(
-            "Вы действительно хотите удалить событие?\n\n"
+            "Вы действительно хотите "
+            "удалить событие?\n\n"
             f"{format_event(event)}",
             reply_markup=keyboard,
         )
 
+
 @router.callback_query(
-    lambda callback: callback.data
-    and callback.data.startswith("delete_confirm:")
+    lambda callback:
+    callback.data
+    and callback.data.startswith(
+        "delete_confirm:"
+    )
 )
 async def delete_event_confirm(
     callback: CallbackQuery,
 ) -> None:
-    event_id = int(callback.data.split(":")[1])
+
+    event_id = int(
+        callback.data.split(":")[1]
+    )
 
     async with async_session() as session:
         event = await get_event_by_id(
@@ -226,8 +259,11 @@ async def delete_event_confirm(
 
 
 @router.callback_query(
-    lambda callback: callback.data
-    and callback.data.startswith("delete_cancel:")
+    lambda callback:
+    callback.data
+    and callback.data.startswith(
+        "delete_cancel:"
+    )
 )
 async def delete_event_cancel(
     callback: CallbackQuery,
@@ -239,8 +275,9 @@ async def delete_event_cancel(
     await callback.answer()
 
 
-
- ########## EDIT ###########
+# ==========================================================
+# EDIT
+# ==========================================================
 
 
 @router.message(Command("edit"))
@@ -258,7 +295,10 @@ async def edit_event_command(
         return
 
     try:
-        event_id = int(command.args.split()[0])
+        event_id = int(
+            command.args.split()[0]
+        )
+
     except ValueError:
         await message.answer(
             "ID события должен быть числом.\n\n"
@@ -268,7 +308,12 @@ async def edit_event_command(
         return
 
     try:
-        event_title = command.args.split(maxsplit=1)[1]
+        event_title = (
+            command.args.split(
+                maxsplit=1
+            )[1]
+        )
+
     except IndexError:
         await message.answer(
             "Введи название для изменения.\n\n"
@@ -276,7 +321,6 @@ async def edit_event_command(
             "/edit 2 Пара"
         )
         return
-
 
     async with async_session() as session:
         event = await get_event_by_id(
@@ -286,12 +330,13 @@ async def edit_event_command(
 
         if event is None:
             await message.answer(
-                f"Событие с ID {event_id} не найдено."
+                f"Событие с ID {event_id} "
+                f"не найдено."
             )
             return
 
         await state.update_data(
-            new_title=event_title,
+            new_title=event_title
         )
 
         keyboard = InlineKeyboardMarkup(
@@ -299,39 +344,56 @@ async def edit_event_command(
                 [
                     InlineKeyboardButton(
                         text="✅ Да, заменить",
-                        callback_data=f"edit_confirm:{event.id}",
+                        callback_data=(
+                            f"edit_confirm:"
+                            f"{event.id}"
+                        ),
                     ),
                     InlineKeyboardButton(
                         text="❌ Отмена",
-                        callback_data=f"edit_cancel:{event.id}",
-                    )
+                        callback_data=(
+                            f"edit_cancel:"
+                            f"{event.id}"
+                        ),
+                    ),
                 ]
             ]
         )
 
         await message.answer(
-            "Вы действительно хотите изменить событие?\n\n"
+            "Вы действительно хотите "
+            "изменить событие?\n\n"
             f"{format_event(event)}",
             reply_markup=keyboard,
         )
 
 
 @router.callback_query(
-    lambda callback: callback.data
-    and callback.data.startswith("edit_confirm:")
+    lambda callback:
+    callback.data
+    and callback.data.startswith(
+        "edit_confirm:"
+    )
 )
 async def edit_event_confirm(
     callback: CallbackQuery,
     state: FSMContext,
 ) -> None:
-    event_id = int(callback.data.split(":")[1])
+
+    event_id = int(
+        callback.data.split(":")[1]
+    )
 
     data = await state.get_data()
-    event_title = data.get("new_title")
+
+    event_title = data.get(
+        "new_title"
+    )
 
     if not event_title:
         await callback.answer(
-            "Данные для изменения не найдены.",
+            "Данные для изменения "
+            "не найдены.",
             show_alert=True,
         )
         return
@@ -360,8 +422,11 @@ async def edit_event_confirm(
 
 
 @router.callback_query(
-    lambda callback: callback.data
-    and callback.data.startswith("edit_cancel:")
+    lambda callback:
+    callback.data
+    and callback.data.startswith(
+        "edit_cancel:"
+    )
 )
 async def edit_event_cancel(
     callback: CallbackQuery,
@@ -372,70 +437,3 @@ async def edit_event_cancel(
     )
     await state.clear()
     await callback.answer()
-
-
-@router.message(Command("week"))
-async def week_command(
-    message: Message,
-) -> None:
-
-    events_by_date = {}
-
-    now = datetime.now()
-
-    start_of_week = datetime(
-        now.year,
-        now.month,
-        now.day,
-    )
-
-    end_of_week = start_of_week + timedelta(days=7)
-
-    async with async_session() as session:
-
-        events = await get_events(
-            session=session,
-            start_at=start_of_week,
-            end_at=end_of_week,
-        )
-
-        for event in events:
-            event_date = event.start_at.date()
-            if event_date not in events_by_date:
-                events_by_date[event_date] = [event]
-            else:
-                events_by_date[event_date].append(event)
-
-        text = "📅 Расписание на неделю\n\n"
-
-        days = {
-            0: "ПОНЕДЕЛЬНИК",
-            1: "ВТОРНИК",
-            2: "СРЕДА",
-            3: "ЧЕТВЕРГ",
-            4: "ПЯТНИЦА",
-            5: "СУББОТА",
-            6: "ВОСКРЕСЕНЬЕ",
-        }
-
-        for day_offset in range(7):
-            data = (start_of_week + timedelta(days=day_offset)).date()
-
-            text += (
-                    days[day_offset]
-                    + " — "
-                    + data.strftime("%d.%m")
-                    + "\n"
-            )
-
-            day_events = events_by_date.get(data, [])
-
-            if not day_events:
-                text += "  Событий нет\n\n"
-            else:
-                for event in day_events:
-                    text += format_week_event(event) + "\n\n"
-
-        await message.answer(text)
-
-

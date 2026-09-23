@@ -9,8 +9,8 @@ class ScheduleEvent:
     end_time: str
 
     # every — каждую неделю
-    # odd   — нечётная неделя
-    # even  — чётная неделя
+    # odd   — нечётная
+    # even  — чётная
     periodicity: str
 
     lesson_type: str = ""
@@ -20,12 +20,10 @@ class ScheduleEvent:
     location: str | None = None
     subgroup: str | None = None
 
-    # Для разового события:
-    # 22.09.2026
+    # Одноразовая дата.
     date: str | None = None
 
-    # Для события с диапазоном:
-    # 04.09.2026 — 18.12.2026
+    # Диапазон дат.
     date_from: str | None = None
     date_to: str | None = None
 
@@ -48,20 +46,11 @@ PERIODICITY_MAP = {
 }
 
 
-def parse_schedule_days(text: str) -> Dict[str, List[str]]:
-    """
-    Разбирает весь текст PDF по дням недели.
-
-    Возвращает:
-
-    {
-        "ПОНЕДЕЛЬНИК": [...],
-        "ВТОРНИК": [...],
-        ...
-    }
-    """
-
+def parse_schedule_days(
+    text: str,
+) -> Dict[str, List[str]]:
     days: Dict[str, List[str]] = {}
+
     current_day = None
 
     for line in text.splitlines():
@@ -81,28 +70,9 @@ def parse_schedule_days(text: str) -> Dict[str, List[str]]:
     return days
 
 
-def parse_day_events(lines: list[str]) -> list[str]:
-    """
-    Объединяет строки одного дня в отдельные события.
-
-    PDF может переносить длинное событие на следующую строку:
-
-        12:45 — 14:20 ■ПР Дискретная математика ...
-        К-1006
-
-    В результате должно получиться одно событие:
-
-        12:45 — 14:20 ■ПР Дискретная математика ... К-1006
-
-    Также учитывается ситуация, когда несколько событий
-    имеют одно и то же время:
-
-        16:15 — 17:50 ■ПР Иностранный язык ... 323
-        ■ПР Иностранный язык ... А-212
-
-    В этом случае второе событие получает время первого.
-    """
-
+def parse_day_events(
+    lines: list[str],
+) -> list[str]:
     events: list[str] = []
 
     current_event: str | None = None
@@ -122,85 +92,64 @@ def parse_day_events(lines: list[str]) -> list[str]:
         if not line:
             continue
 
-        time_match = time_pattern.match(line)
-        lesson_match = lesson_pattern.match(line)
+        time_match = time_pattern.match(
+            line
+        )
 
-        # --------------------------------------------------
-        # Новое событие с явно указанным временем
-        # --------------------------------------------------
+        lesson_match = lesson_pattern.match(
+            line
+        )
+
+        # Новое событие с временем.
         if time_match:
             if current_event is not None:
                 events.append(current_event)
 
-            current_time = time_match.group(0)
+            current_time = (
+                time_match.group(0)
+            )
+
             current_event = line
+
             continue
 
-        # --------------------------------------------------
         # Новое событие без времени.
-        #
-        # Например:
-        #
-        # 16:15 — 17:50 ■ПР ... Подгруппа 1
-        # ■ПР ... Подгруппа 2
-        # --------------------------------------------------
         if lesson_match:
             if current_event is not None:
                 events.append(current_event)
 
             if current_time is not None:
-                current_event = f"{current_time} {line}"
+                current_event = (
+                    f"{current_time} {line}"
+                )
             else:
                 current_event = line
 
             continue
 
-        # --------------------------------------------------
         # Продолжение предыдущего события.
-        #
-        # Например:
-        #
-        # 12:45 — 14:20 ■ПР Дискретная математика ...
-        # К-1006
-        # --------------------------------------------------
         if current_event is not None:
-            current_event += " " + line
+            current_event += (
+                " " + line
+            )
 
     if current_event is not None:
-        events.append(current_event)
+        events.append(
+            current_event
+        )
 
     return events
 
 
-def parse_event(line: str) -> ScheduleEvent:
-    """
-    Преобразует строку события в ScheduleEvent.
-
-    Пример входа:
-
-        16:15 — 17:50 ■ПР Иностранный язык
-        Подгруппа 1 Самуйлик Т.Ю. 323
-
-    Результат:
-
-        ScheduleEvent(
-            start_time="16:15",
-            end_time="17:50",
-            periodicity="every",
-            lesson_type="ПР",
-            subject="Иностранный язык",
-            teacher="Самуйлик Т.Ю.",
-            location="323",
-            subgroup="Подгруппа 1",
-            ...
-        )
-    """
+def parse_event(
+    line: str,
+) -> ScheduleEvent:
 
     line = line.strip()
 
-    # ======================================================
-    # 1. ВРЕМЯ + ПЕРИОДИЧНОСТЬ
-    # ======================================================
+    # ==========================================
+    # Время + периодичность
+    # ==========================================
 
     time_pattern = re.compile(
         r"^"
@@ -211,25 +160,34 @@ def parse_event(line: str) -> ScheduleEvent:
         r"([■◩◪])"
     )
 
-    time_match = time_pattern.match(line)
+    time_match = time_pattern.match(
+        line
+    )
 
     if time_match is None:
         raise ValueError(
-            f"Не удалось распознать время и периодичность: {line}"
+            "Не удалось распознать время "
+            f"и периодичность: {line}"
         )
 
     start_time = time_match.group(1)
     end_time = time_match.group(2)
-    periodicity_symbol = time_match.group(3)
 
-    periodicity = PERIODICITY_MAP[periodicity_symbol]
+    periodicity_symbol = (
+        time_match.group(3)
+    )
 
-    # Всё после времени и символа периодичности
-    rest = line[time_match.end():].strip()
+    periodicity = PERIODICITY_MAP[
+        periodicity_symbol
+    ]
 
-    # ======================================================
-    # 2. ТИП ЗАНЯТИЯ
-    # ======================================================
+    rest = line[
+        time_match.end():
+    ].strip()
+
+    # ==========================================
+    # Тип занятия
+    # ==========================================
 
     lesson_type = ""
 
@@ -239,15 +197,17 @@ def parse_event(line: str) -> ScheduleEvent:
     )
 
     if lesson_match:
-        lesson_type = lesson_match.group(1)
+        lesson_type = (
+            lesson_match.group(1)
+        )
 
         rest = rest[
             lesson_match.end():
         ].strip()
 
-    # ======================================================
-    # 3. ПОДГРУППА
-    # ======================================================
+    # ==========================================
+    # Подгруппа
+    # ==========================================
 
     subgroup = None
 
@@ -257,16 +217,22 @@ def parse_event(line: str) -> ScheduleEvent:
     )
 
     if subgroup_match:
-        subgroup = subgroup_match.group(1)
+        subgroup = (
+            subgroup_match.group(1)
+        )
 
         rest = (
-            rest[:subgroup_match.start()]
-            + rest[subgroup_match.end():]
+            rest[
+                :subgroup_match.start()
+            ]
+            + rest[
+                subgroup_match.end():
+            ]
         ).strip()
 
-    # ======================================================
-    # 4. ПРЕПОДАВАТЕЛЬ
-    # ======================================================
+    # ==========================================
+    # Преподаватель
+    # ==========================================
 
     teacher = None
 
@@ -276,16 +242,23 @@ def parse_event(line: str) -> ScheduleEvent:
     )
 
     if teacher_match:
-        teacher = teacher_match.group(1).strip()
+        teacher = (
+            teacher_match.group(1)
+            .strip()
+        )
 
         rest = (
-            rest[:teacher_match.start()]
-            + rest[teacher_match.end():]
+            rest[
+                :teacher_match.start()
+            ]
+            + rest[
+                teacher_match.end():
+            ]
         ).strip()
 
-    # ======================================================
-    # 5. АУДИТОРИЯ
-    # ======================================================
+    # ==========================================
+    # Аудитория
+    # ==========================================
 
     location = None
 
@@ -295,26 +268,24 @@ def parse_event(line: str) -> ScheduleEvent:
     )
 
     if location_match:
-        location = location_match.group(1).strip()
+        location = (
+            location_match.group(1)
+            .strip()
+        )
 
         rest = rest[
             :location_match.start()
         ].strip()
 
-    # ======================================================
-    # 6. ДАТА
-    # ======================================================
+    # ==========================================
+    # Даты
+    # ==========================================
 
-    date = None
+    event_date = None
     date_from = None
     date_to = None
 
-    # ------------------------------------------------------
-    # Диапазон дат:
-    #
-    # (04.09.2026 — 18.12.2026)
-    # ------------------------------------------------------
-
+    # Диапазон дат.
     date_range_pattern = re.compile(
         r"\("
         r"(\d{2}\.\d{2}\.\d{4})"
@@ -323,41 +294,55 @@ def parse_event(line: str) -> ScheduleEvent:
         r"\)"
     )
 
-    date_range_match = date_range_pattern.search(rest)
+    date_range_match = (
+        date_range_pattern.search(rest)
+    )
 
     if date_range_match:
-        date_from = date_range_match.group(1)
-        date_to = date_range_match.group(2)
+        date_from = (
+            date_range_match.group(1)
+        )
+
+        date_to = (
+            date_range_match.group(2)
+        )
 
         rest = (
-            rest[:date_range_match.start()]
-            + rest[date_range_match.end():]
+            rest[
+                :date_range_match.start()
+            ]
+            + rest[
+                date_range_match.end():
+            ]
         ).strip()
 
     else:
-        # --------------------------------------------------
-        # Одиночная дата:
-        #
-        # (22.09.2026)
-        # --------------------------------------------------
-
+        # Одноразовая дата.
         date_pattern = re.compile(
             r"\((\d{2}\.\d{2}\.\d{4})\)"
         )
 
-        date_match = date_pattern.search(rest)
+        date_match = date_pattern.search(
+            rest
+        )
 
         if date_match:
-            date = date_match.group(1)
+            event_date = (
+                date_match.group(1)
+            )
 
             rest = (
-                rest[:date_match.start()]
-                + rest[date_match.end():]
+                rest[
+                    :date_match.start()
+                ]
+                + rest[
+                    date_match.end():
+                ]
             ).strip()
 
-    # ======================================================
-    # 7. ПРЕДМЕТ
-    # ======================================================
+    # ==========================================
+    # Предмет
+    # ==========================================
 
     subject = rest.strip()
 
@@ -370,7 +355,37 @@ def parse_event(line: str) -> ScheduleEvent:
         teacher=teacher,
         location=location,
         subgroup=subgroup,
-        date=date,
+        date=event_date,
         date_from=date_from,
         date_to=date_to,
     )
+
+
+def parse_full_schedule(
+    text: str,
+) -> dict[str, list[ScheduleEvent]]:
+    """
+    Полностью разбирает расписание из PDF.
+    """
+
+    days = parse_schedule_days(
+        text
+    )
+
+    result: dict[
+        str,
+        list[ScheduleEvent],
+    ] = {}
+
+    for day, lines in days.items():
+
+        events = parse_day_events(
+            lines
+        )
+
+        result[day] = [
+            parse_event(event)
+            for event in events
+        ]
+
+    return result
