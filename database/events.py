@@ -42,7 +42,10 @@ async def get_event_by_id(
     session: AsyncSession,
     event_id: int,
 ) -> Event | None:
-    return await session.get(Event, event_id)
+    return await session.get(
+        Event,
+        event_id,
+    )
 
 
 async def get_events(
@@ -50,23 +53,32 @@ async def get_events(
     start_at: datetime | None = None,
     end_at: datetime | None = None,
 ) -> list[Event]:
-    query = select(Event).order_by(Event.start_at)
+    query = (
+        select(Event)
+        .order_by(Event.start_at)
+    )
 
     if start_at is not None:
-        query = query.where(Event.start_at >= start_at)
+        query = query.where(
+            Event.start_at >= start_at
+        )
 
     if end_at is not None:
-        query = query.where(Event.start_at < end_at)
+        query = query.where(
+            Event.start_at < end_at
+        )
 
     result = await session.execute(query)
 
-    return list(result.scalars().all())
+    return list(
+        result.scalars().all()
+    )
 
 
 async def update_event_title(
-        session: AsyncSession,
-        event_id: int,
-        title: str,
+    session: AsyncSession,
+    event_id: int,
+    title: str,
 ) -> Event | None:
     event = await get_event_by_id(
         session=session,
@@ -77,9 +89,11 @@ async def update_event_title(
         return None
 
     event.title = title
+
     await session.commit()
 
     return event
+
 
 async def delete_event(
     session: AsyncSession,

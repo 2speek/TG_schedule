@@ -1,31 +1,56 @@
 from pathlib import Path
 import sys
 
-from parsers.pdf_parser import extract_pdf_text
+from parsers.pdf_parser import (
+    extract_pdf_text,
+)
+
 from parsers.schedule_parser import (
-    parse_schedule_days,
-    parse_day_events,
-    parse_event,
+    parse_full_schedule,
 )
 
 
 if len(sys.argv) > 1:
-    pdf_path = Path(sys.argv[1])
 
-    txt = extract_pdf_text(pdf_path)
-    parsed = parse_schedule_days(txt)
+    pdf_path = Path(
+        sys.argv[1]
+    )
 
-    for day, lines in parsed.items():
-        print(f"{day}:")
+    text = extract_pdf_text(
+        pdf_path
+    )
 
-        events = parse_day_events(lines)
+    schedule = parse_full_schedule(
+        text
+    )
 
-        for event_line in events:
-            event = parse_event(event_line)
-            print(f"\t{event}")
+    total = 0
+
+    for day, events in schedule.items():
+
+        print(
+            f"{day}:"
+        )
+
+        for event in events:
+            print(
+                f"\t{event}"
+            )
+
+            total += 1
 
         print()
 
+    print(
+        f"Всего событий: {total}"
+    )
+
 else:
-    print("Использование:")
-    print("python test_schedule_parser.py <путь_к_pdf>")
+    print(
+        "Использование:"
+    )
+
+    print(
+        "python test_schedule_parser.py "
+        "<путь_к_pdf>"
+    )

@@ -3,7 +3,9 @@ from pathlib import Path
 import pymupdf
 
 
-def extract_pdf_text(file_path: Path) -> str:
+def extract_pdf_text(
+    file_path: Path,
+) -> str:
     with pymupdf.open(file_path) as pdf:
         texts = []
 
